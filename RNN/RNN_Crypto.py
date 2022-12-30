@@ -1,12 +1,14 @@
+# Не доделан, не работает
+
 import pandas as pd
 from collections import deque
 import random
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, LSTM, CuDNNLSTM, BatchNormalization
-from tensorflow.keras.callbacks import TensorBoard
-from tensorflow.keras.callbacks import ModelCheckpoint, ModelCheckpoint
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, LSTM, CuDNNLSTM, BatchNormalization
+from keras.callbacks import TensorBoard
+from keras.callbacks import ModelCheckpoint
 import time
 from sklearn import preprocessing  # pip установите sklearn... если у вас его нет!
 
@@ -139,7 +141,7 @@ model.add(Dropout(0.2))
 model.add(Dense(2, activation='softmax'))
 
 
-opt = tf.keras.optimizers.Adam(lr=0.001, decay=1e-6)
+opt = tf.keras.optimizers.legacy.Adam(lr=0.001, decay=1e-6)
 
 # Compile model
 model.compile(
@@ -151,9 +153,11 @@ model.compile(
 tensorboard = TensorBoard(log_dir="logs/{}".format(NAME))
 
 filepath = "RNN_Final-{epoch:02d}-{val_acc:.3f}"  # unique file name that will include the epoch and the validation acc for that epoch
-checkpoint = ModelCheckpoint("models/{}.model".format(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')) # saves only the best ones
+checkpoint = ModelCheckpoint("models/{}.model".format(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max'))  # saves only the best ones
 
 # Train model
+# print(type(train_x), type(train_y))
+train_y = np.array(train_y)  # Смена типа данных
 history = model.fit(
     train_x, train_y,
     batch_size=BATCH_SIZE,
