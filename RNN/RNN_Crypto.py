@@ -4,14 +4,14 @@ import random
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from keras.layers import Dense, Dropout, LSTM, CuDNNLSTM, BatchNormalization
-from keras.callbacks import TensorBoard
-from keras.callbacks import ModelCheckpoint, ModelCheckpoint
+from tensorflow.keras.layers import Dense, Dropout, LSTM, CuDNNLSTM, BatchNormalization
+from tensorflow.keras.callbacks import TensorBoard
+from tensorflow.keras.callbacks import ModelCheckpoint, ModelCheckpoint
 import time
-from sklearn import preprocessing
+from sklearn import preprocessing  # pip установите sklearn... если у вас его нет!
 
-SEQ_LEN = 60  # how long of a preceeding sequence to collect for RNN
-FUTURE_PERIOD_PREDICT = 3  # how far into the future are we trying to predict?
+SEQ_LEN = 60  # сколько времени предшествующей последовательности собирать для RNN
+FUTURE_PERIOD_PREDICT = 3  # как далеко в будущее мы пытаемся предсказать?
 RATIO_TO_PREDICT = "LTC-USD"
 EPOCHS = 10  # how many passes through our data
 BATCH_SIZE = 64  # how many batches? Try smaller batch if you're getting OOM (out of memory) errors.
@@ -26,46 +26,45 @@ def classify(current, future):
 
 
 def preprocess_df(df):
-    # df = df.drop("future", 1)  # don't need this anymore.
-    df = df.drop(columns="future")  # don't need this anymore.
+    df = df.drop(columns="future")  # это больше не нужно (колонка 'future').
 
-    for col in df.columns:  # go through all of the columns
-        if col != "target":  # normalize all ... except for the target itself!
-            df[col] = df[col].pct_change()  # pct change "normalizes" the different currencies (each crypto coin has vastly diff values, we're really more interested in the other coin's movements)
-            df.dropna(inplace=True)  # remove the nas created by pct_change
-            df[col] = preprocessing.scale(df[col].values)  # scale between 0 and 1.
+    for col in df.columns:  # пройдите по всем столбцам
+        if col != "target":  # нормализуйте все ... за исключением самой цели!
+            df[col] = df[col].pct_change()  # изменение pct "нормализует" разные валюты (каждая криптомонета имеет значительно разные значения, нас действительно больше интересуют движения другой монеты)
+            df.dropna(inplace=True)  # удалить nan, созданный с помощью pct_change
+            df[col] = preprocessing.scale(df[col].values)  # масштаб от 0 до 1.
 
-    df.dropna(inplace=True)  # cleanup again... jic.
+    df.dropna(inplace=True)  # снова очистка ... jic. Эти противные NAN любят подкрадываться.
 
-    sequential_data = []  # this is a list that will CONTAIN the sequences
-    prev_days = deque(maxlen=SEQ_LEN)  # These will be our actual sequences. They are made with deque, which keeps the maximum length by popping out older values as new ones come in
+    sequential_data = []  # это список, который будет СОДЕРЖАТЬ последовательности
+    prev_days = deque(maxlen=SEQ_LEN)  # Это будут наши фактические последовательности. Они сделаны с помощью deque, который сохраняет максимальную длину, выталкивая старые значения по мере поступления новых
 
-    for i in df.values:  # iterate over the values
-        prev_days.append([n for n in i[:-1]])  # store all but the target
-        if len(prev_days) == SEQ_LEN:  # make sure we have 60 sequences!
-            sequential_data.append([np.array(prev_days), i[-1]])  # append those bad boys!
+    for i in df.values:  # перебирать значения
+        prev_days.append([n for n in i[:-1]])  # сохранить все, кроме целевого
+        if len(prev_days) == SEQ_LEN:  # убедитесь, что у нас есть 60 последовательностей!
+            sequential_data.append([np.array(prev_days), i[-1]])  # добавьте этих плохих парней!
 
     random.shuffle(sequential_data)  # shuffle for good measure.
 
-    buys = []  # list that will store our buy sequences and targets
-    sells = []  # list that will store our sell sequences and targets
+    buys = []  # список, в котором будут храниться наши последовательности покупок и цели
+    sells = []  # список, в котором будут храниться наши последовательности продаж и цели
 
-    for seq, target in sequential_data:  # iterate over the sequential data
-        if target == 0:  # if it's a "not buy"
-            sells.append([seq, target])  # append to sells list
-        elif target == 1:  # otherwise if the target is a 1...
-            buys.append([seq, target])  # it's a buy!
+    for seq, target in sequential_data:  # перебор последовательных данных
+        if target == 0:  # если это "не покупка"
+            sells.append([seq, target])  # добавить в список продаж
+        elif target == 1:  # в противном случае, если целью является 1 ...
+            buys.append([seq, target])  # это покупка!
 
-    random.shuffle(buys)  # shuffle the buys
-    random.shuffle(sells)  # shuffle the sells!
+    random.shuffle(buys)  # перетасуйте покупки
+    random.shuffle(sells)  # перетасуйте продажи!
 
-    lower = min(len(buys), len(sells))  # what's the shorter length?
+    lower = min(len(buys), len(sells))  # какая длина короче?
 
-    buys = buys[:lower]  # make sure both lists are only up to the shortest length.
-    sells = sells[:lower]  # make sure both lists are only up to the shortest length.
+    buys = buys[:lower]  # убедитесь, что оба списка имеют только самую короткую длину.
+    sells = sells[:lower]  # убедитесь, что оба списка имеют только самую короткую длину.
 
-    sequential_data = buys+sells  # add them together
-    random.shuffle(sequential_data)  # another shuffle, so the model doesn't get confused with all 1 class then the other.
+    sequential_data = buys+sells  # добавьте их вместе
+    random.shuffle(sequential_data)  # еще один случай, чтобы модель не путалась со всеми 1 классом, а затем с другим.
 
     X = []
     y = []
@@ -77,7 +76,7 @@ def preprocess_df(df):
     return np.array(X), y  # return X and y...and make X a numpy array!
 
 
-main_df = pd.DataFrame() # begin empty
+main_df = pd.DataFrame()  # Создаем пустой DF
 
 ratios = ["BTC-USD", "LTC-USD", "BCH-USD", "ETH-USD"]  # the 4 ratios we want to consider
 for ratio in ratios:  # begin iteration
@@ -108,11 +107,11 @@ main_df['target'] = list(map(classify, main_df[f'{RATIO_TO_PREDICT}_close'], mai
 main_df.dropna(inplace=True)
 
 ## here, split away some slice of the future data from the main main_df.
-times = sorted(main_df.index.values)
-last_5pct = sorted(main_df.index.values)[-int(0.05*len(times))]
+times = sorted(main_df.index.values)  # получаем времена
+last_5pct = sorted(main_df.index.values)[-int(0.05*len(times))]   # получаем последние 5% времени
 
-validation_main_df = main_df[(main_df.index >= last_5pct)]
-main_df = main_df[(main_df.index < last_5pct)]
+validation_main_df = main_df[(main_df.index >= last_5pct)]  # делаемданные проверки, в которых индекс находится в последних 5%
+main_df = main_df[(main_df.index < last_5pct)]  # теперь main_df - это все данные до последних 5%
 
 train_x, train_y = preprocess_df(main_df)
 validation_x, validation_y = preprocess_df(validation_main_df)
